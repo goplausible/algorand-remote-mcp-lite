@@ -1,4 +1,5 @@
 # Algorand Remote MCP Lite (Wallet Edition)
+<img width="1005" height="554" alt="1_heKuf7jrjc3-aAAbGVdgLw copy" src="https://github.com/user-attachments/assets/cbf58093-8450-4769-88e3-98b6130ee740" />
 
 Algorand Remote MCP Lite is a wallet-first Model Context Protocol server for Algorand. It is a trimmed version of the full remote MCP, intentionally limited to 40 tools to keep the surface area focused on agentic wallet workflows. It runs on Algorand Mainnet by default and signs transactions server-side using HashiCorp Vault.
 
