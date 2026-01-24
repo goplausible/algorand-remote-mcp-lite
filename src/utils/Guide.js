@@ -122,7 +122,7 @@ Understanding Tool Categories directly available to LLM Agents:
 
 1. Wallet Management Tools (Tool name starts with wallet_)
    - Type: Wallet accounts, signing and verification tools availavle to agents to use
-   - Important tools: \`wallet_get_info\` ,\`wallet_sign_atomic_group\`, \`wallet_sign_transaction\`, \`wallet_get_assets\`, \`wallet_reset_account\`
+   - Important tools: \`wallet_get_info\` ,\`wallet_sign_atomic_group\`, \`wallet_sign_transaction\`, \`wallet_get_assets\`
    - Purpose: Access configured wallet information
    - Note: Requires proper server configuration
    
@@ -144,7 +144,7 @@ Understanding Tool Categories directly available to LLM Agents:
 
 5. Asset Management Tools
    - Type: Asset data retrieval
-   - Important tools: \`algod_get_asset_info\`, \`algod_get_asset_holding\`
+   - Important tools: \`algod_get_asset_info\`
    - Purpose: Access asset information
    - Note: Requires valid Asset ID and/or Algorand address
 
@@ -154,13 +154,7 @@ Understanding Tool Categories directly available to LLM Agents:
    - Purpose: Access verified assets information to be used for swapping, trading, accepting assets, etc.
    - Note: Requires valid Asset ID and/or search query (asset name, unit name, or creator address)
 
-7. Application Management Tools
-   - Type: Smart contract application information retrieval and management
-   - Important tools: \`sdk_txn_create_application\`, \`sdk_txn_call_application\`, \`sdk_txn_update_application\`
-   - Purpose: Create and manage Algorand smart contract applications
-   - Notes: Requires proper application parameters
-
-8. NFD API Query Tools
+7. NFD API Query Tools
    - Type: Algorand blockchain data retrieval
    - Important tools:  \`api_nfd_get_nfd\`, \`api_nfd_get_nfds_for_address\`
    - Tool: \`algod_get_account_info\`
@@ -192,26 +186,29 @@ Understanding Tool Categories directly available to LLM Agents:
       }
       \`\`\`
 
-9. Utility Tools
+8. Utility Tools
    - Type: Miscellaneous utility functions
-   - Important tools: \`sdk_validate_address\`, \`sdk_encode_obj\`, \`sdk_decode_obj\`, \`sdk_compile_teal\`
+   - Important tools: \`sdk_validate_address\`
    Note:
 
    - Tool: \`sdk_validate_address\`
    - Purpose: Validate Algorand address
    - Parameters: \`{ address: string }\`
 
-   - Tool: \`sdk_encode_obj\`
-   - Purpose: Encode object to msgpack
-   - Parameters: \`{ obj: any }\`
+9. ARC-26 QR Code Tools
+   - Type: Payment and asset funding QR code generation
+   - Important tools: \`generate_algorand_qrcode\`
+   - Purpose: Create ARC-26 URIs and QR codes for on-demand topups and payment requests
 
-   - Tool: \`sdk_decode_obj\`
-   - Purpose: Decode msgpack to object
-   - Parameters: \`{ bytes: string }\`
+10. Receipt Generation Tools
+   - Type: Post-transaction receipt generation
+   - Important tools: \`generate_algorand_receipt\`
+   - Purpose: Create a receipt and QR code for Algorand payments or asset transfers
 
-   - Tool: \`sdk_compile_teal\`
-   - Purpose: Compile TEAL program
-   - Parameters: \`{ source: string }\`
+11. AP2 Mandate Tools
+   - Type: AP2 intent/cart/payment mandate creation
+   - Important tools: \`generate_ap2_mandate\`
+   - Purpose: Generate AP2 mandates and verifiable credential payloads for agentic checkout flows
 
 ### Transactions Instructions:
 
@@ -244,8 +241,8 @@ Understanding Tool Categories directly available to LLM Agents:
    - Always opt-in before receiving assets
    - Verify asset balances before transfers
    - Handle clawback operations carefully
-   - Check asset verification status using \`pera_asset_verification_query\` to avoid scam tokens
-   - Get detailed asset information using \`pera_verified_asset_details\` before interacting with assets
+   - Check asset verification status using \`pera_verified_asset_query\` to avoid scam tokens
+   - Get detailed asset information using \`pera_verified_asset_query\` before interacting with assets
    - Pay attention to verification tier (verified, unverified, or suspicious) when working with assets
 
 ### Transactions Workflow steps and examples:
@@ -340,21 +337,13 @@ Understanding Tool Categories directly available to LLM Agents:
 
 2. Check asset verification status (optional and just to be able to warn user if asset is not verified):
    \`\`\`
-   use_tool: pera_asset_verification_query
+   use_tool: pera_verified_asset_query
    parameters: {
      "assetId": 31566704  // USDC on Algorand Mainnet
    }
    \`\`\`
 
-3. Get detailed asset information (optional):
-   \`\`\`
-   use_tool: pera_verified_asset_details
-   parameters: {
-     "assetId": 31566704  // USDC on Algorand Mainnet
-   }
-   \`\`\`
-
-4. Check sender's asset balance:
+3. Check sender's asset balance:
    \`\`\`
    use_tool: algod_get_account_asset_info
    parameters: {
@@ -363,7 +352,7 @@ Understanding Tool Categories directly available to LLM Agents:
    }
    \`\`\`
 
-5. Verify recipient has opted in:
+4. Verify recipient has opted in:
    \`\`\`
    use_tool: algod_get_account_asset_info
    parameters: {
@@ -372,7 +361,7 @@ Understanding Tool Categories directly available to LLM Agents:
    }
    \`\`\`
 
-6. Create asset transfer transaction:
+5. Create asset transfer transaction:
    \`\`\`
    use_tool: sdk_txn_transfer_asset
    parameters: {
@@ -383,19 +372,19 @@ Understanding Tool Categories directly available to LLM Agents:
    }
    \`\`\`
 
-7. Sign the transaction:
+6. Sign the transaction:
    \`\`\`
    use_tool: wallet_sign_transaction
    parameters: {
-     "encodedTxn": "[transaction_from_step_6]"
+     "encodedTxn": "[transaction_from_step_5]"
    }
    \`\`\`
 
-8. Submit the transaction and get the transaction ID:
+7. Submit the transaction and get the transaction ID:
    \`\`\`
    use_tool: sdk_submit_transaction
    parameters: {
-     "signedTxn": "[signed_transaction_from_step_7]"
+     "signedTxn": "[signed_transaction_from_step_6]"
    }
    \`\`\`
 
@@ -541,7 +530,7 @@ Note: For opt-out of asset, first get asset info and then use asset creator addr
      }
      \`\`\`
 
-Note: When manually creating individual transactions for Transaction Grouping and before signing them, you must assign a group ID to the transactions using the \`assign_group_id\` tool.
+Note: When manually creating individual transactions for Transaction Grouping and before signing them, you must assign a group ID to the transactions using the \`sdk_assign_group_id\` tool.
    - Tool: \`sdk_assign_group_id\`
    - Purpose: Group transactions for atomic execution
    - Parameters: \`{ encodedTxns: string[] }\`
