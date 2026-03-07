@@ -3,7 +3,7 @@
  * Handles account-related operations on the Algorand blockchain
  */
 
-import algosdk from 'algosdk';
+import * as algosdk from 'algosdk';
 import { z } from 'zod';
 import { ResponseProcessor } from '../utils';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -102,13 +102,13 @@ export function registerAccountTools(server: McpServer,env: Env, props: Props): 
         const accountInfo = await algodClient.accountInformation(address).do();
         
         // Convert from microAlgos to Algos
-        const balance = accountInfo.amount / 1000000;
-        
+        const balance = Number(accountInfo.amount) / 1000000;
+
         return ResponseProcessor.processResponse({
           address,
           balance,
-          microAlgos: accountInfo.amount,
-          minBalance: accountInfo['min-balance']
+          microAlgos: Number(accountInfo.amount),
+          minBalance: Number(accountInfo.minBalance)
         });
       } catch (error: any) {
         return {

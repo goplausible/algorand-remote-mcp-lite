@@ -8,7 +8,7 @@ import { OauthHandler } from "./oauth-handler";
 import {
   ensureUserAccount,
 } from './utils/vaultManager';
-// import algosdk from 'algosdk';
+// import * as algosdk from 'algosdk';
 import {
 	registerAccountTools,
 	registerGeneralTransactionTools,
@@ -25,7 +25,7 @@ import {
 	registerAp2Tools,
 	registerTinymanTools
 } from './tools';
-import { registerWalletResources/* , registerKnowledgeResources */, registerGuideResource } from './resources';
+import { registerSkillResource } from './resources';
 
 
 
@@ -33,7 +33,7 @@ import { registerWalletResources/* , registerKnowledgeResources */, registerGuid
 export class AlgorandRemoteMCPLite extends McpAgent<Env, State, Props> {
 	server = new McpServer({
 		name: "Algorand Remote MCP",
-		version: "1.2.0",
+		version: "1.8.0",
 	});
 
 	// Initialize state with default values
@@ -71,9 +71,8 @@ export class AlgorandRemoteMCPLite extends McpAgent<Env, State, Props> {
 
 
 		// Register resources
-		await this.registerWalletResources();
 		// this.registerKnowledgeResources();
-		this.registerGuideResources();
+		this.registerSkillResources();
 
 		// Register tools by category
 		await this.registerWalletTools();
@@ -91,15 +90,6 @@ export class AlgorandRemoteMCPLite extends McpAgent<Env, State, Props> {
 	}
 
 
-	/**
-	 * Register wallet resources
-	 */
-	private async registerWalletResources() {
-		// Register all wallet-related resources
-		// Since this might contain parameters from env, we pass env to the function
-		await registerWalletResources(this.server, this.env, this.props);
-	}
-
 	// /**
 	//  * Register knowledge resources
 	//  */
@@ -110,11 +100,11 @@ export class AlgorandRemoteMCPLite extends McpAgent<Env, State, Props> {
 	// }
 
 	/**
-	 * Register guide resources
+	 * Register skill resources
 	 */
-	private registerGuideResources() {
-		// Register guide resources for agent usage guidance
-		registerGuideResource(this.server, this.env, this.props);
+	private registerSkillResources() {
+		// Register skill resources for agent usage guidance
+		registerSkillResource(this.server, this.env, this.props);
 	}
 
 	/**

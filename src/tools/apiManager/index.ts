@@ -10,6 +10,7 @@ import type { Env, Props } from '../../types';
 import { registerAlgodApiTools } from './algod';
 import { registerIndexerApiTools } from './indexer';
 import { registerNfdApiTools } from './nfd';
+import { registerHaystackRouterTools } from './hayrouter';
 
 /**
  * Register API tools to the MCP server
@@ -17,12 +18,15 @@ import { registerNfdApiTools } from './nfd';
 export function registerApiTools(server: McpServer,env: Env, props: Props): void {
   // Register algod API tools
   registerAlgodApiTools(server, env);
-  
+
   // Register indexer API tools
   registerIndexerApiTools(server, env);
-  
+
   // Register NFD API tools
   registerNfdApiTools(server, env);
+
+  // Register Haystack Router tools
+  registerHaystackRouterTools(server, env, props);
   
   // // Generic API request tool
   // server.tool(

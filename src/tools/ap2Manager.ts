@@ -3,7 +3,7 @@
  * Handles AP2 operations for Algorand keys stored in a HashiCorp vault
  */
 
-import algosdk from 'algosdk';
+import * as algosdk from 'algosdk';
 import { z } from 'zod';
 // import { ResponseProcessor } from '../utils';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -153,7 +153,7 @@ async function generateVerifiableCredential(env: Env, props: Props, mandateType:
         ...mandate
       };
       // For cart mandates, the merchant is the issuer (typically)
-      issuer = merchantDid; // 
+      issuer = merchantDid!; // 
       break;
     case 'payment_mandate':
       vcType = 'PaymentMandateCredential';

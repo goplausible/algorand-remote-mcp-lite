@@ -3,7 +3,7 @@
  * Handles transaction groups and atomic operations
  */
 
-import algosdk from 'algosdk';
+import * as algosdk from 'algosdk';
 import { z } from 'zod';
 import { ResponseProcessor } from '../../utils';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -61,8 +61,8 @@ async function buildTransaction(
   switch (type) {
     case 'pay': // Payment transaction
       return algosdk.makePaymentTxnWithSuggestedParamsFromObject({
-        from: params.from,
-        to: params.to,
+        sender: params.from,
+        receiver: params.to,
         amount: params.amount,
         note: noteBytes,
         closeRemainderTo: params.closeRemainderTo,
@@ -72,14 +72,14 @@ async function buildTransaction(
 
     case 'axfer': // Asset transfer transaction
       return algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-        from: params.from,
-        to: params.to,
+        sender: params.from,
+        receiver: params.to,
         assetIndex: params.assetIndex,
         amount: params.amount,
         note: noteBytes,
         closeRemainderTo: params.closeRemainderTo,
         rekeyTo: params.rekeyTo,
-        revocationTarget: params.revocationTarget,
+        assetSender: params.revocationTarget,
         suggestedParams
       });
 
@@ -87,7 +87,7 @@ async function buildTransaction(
       if (params.assetIndex) {
         // Reconfiguring existing asset
         return algosdk.makeAssetConfigTxnWithSuggestedParamsFromObject({
-          from: params.from,
+          sender: params.from,
           assetIndex: params.assetIndex,
           manager: params.manager,
           reserve: params.reserve,
@@ -101,7 +101,7 @@ async function buildTransaction(
       }
       // Creating new asset
       return algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-        from: params.from,
+        sender: params.from,
         total: params.total,
         decimals: params.decimals,
         defaultFrozen: params.defaultFrozen,
@@ -120,10 +120,10 @@ async function buildTransaction(
 
     case 'afrz': // Asset freeze transaction
       return algosdk.makeAssetFreezeTxnWithSuggestedParamsFromObject({
-        from: params.from,
+        sender: params.from,
         freezeTarget: params.freezeTarget,
         assetIndex: params.assetIndex,
-        freezeState: params.freezeState,
+        frozen: params.freezeState,
         note: noteBytes,
         rekeyTo: params.rekeyTo,
         suggestedParams
@@ -131,7 +131,7 @@ async function buildTransaction(
 
     case 'appl': // Application call transaction
       return algosdk.makeApplicationCallTxnFromObject({
-        from: params.from,
+        sender: params.from,
         appIndex: params.appIndex || 0, // 0 for app creation
         onComplete: params.onComplete || algosdk.OnApplicationComplete.NoOpOC,
         appArgs: params.appArgs ? params.appArgs.map((arg: string) => new Uint8Array(Buffer.from(arg, 'base64'))) : undefined,
@@ -155,7 +155,7 @@ async function buildTransaction(
       if (params.nonParticipation === true) {
         // Going offline
         return algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
-          from: params.from,
+          sender: params.from,
           suggestedParams,
           nonParticipation: true,
           note: noteBytes,
@@ -164,7 +164,7 @@ async function buildTransaction(
       }
       // Normal key registration
       return algosdk.makeKeyRegistrationTxnWithSuggestedParamsFromObject({
-        from: params.from,
+        sender: params.from,
         voteKey: params.voteKey,
         selectionKey: params.selectionKey,
         stateProofKey: params.stateProofKey,
@@ -298,7 +298,7 @@ export function registerGroupTransactionTools(server: McpServer, env: Env, props
   // Atomic transaction signing helper
   server.tool(
     'wallet_sign_atomic_group',
-    'Sign an atomic transaction group',
+    'Sign an atomic transaction group. This is the default way of signing transaction groups by agents using this MCP. This uses the vault account binding to user OAuth account used to authenticate user to this MCP.',
     {
       encodedTxns: z.array(z.string()).describe('Array of base64-encoded unsigned transactions'),
       keyName: z.string().describe('Key name of the signer for all transactions in the group')
@@ -380,7 +380,7 @@ export function registerGroupTransactionTools(server: McpServer, env: Env, props
             // Get the address from the public key
             const signerAddr = algosdk.encodeAddress(publicKeyBuffer);
             console.log('Signer address:', signerAddr);
-            const txnObj = decodedTxn.get_obj_for_encoding();
+            const txnObj = msgpack.decode(algosdk.encodeUnsignedTransaction(decodedTxn));
             console.log('Transaction object for encoding:', txnObj);
 
             // Create a signed transaction object
@@ -392,7 +392,7 @@ export function registerGroupTransactionTools(server: McpServer, env: Env, props
 
             // Add AuthAddr if signing with a different key than From indicates
             // Compare the actual bytes of the public keys, not their string representations
-            const fromPubKey = decodedTxn.from.publicKey;
+            const fromPubKey = decodedTxn.sender.publicKey;
             let keysMatch = fromPubKey.length === publicKeyBuffer.length;
             if (keysMatch) {
               for (let i = 0; i < fromPubKey.length; i++) {
@@ -405,7 +405,7 @@ export function registerGroupTransactionTools(server: McpServer, env: Env, props
 
             if (!keysMatch) {
               // Only add sgnr if the keys are actually different
-              signedTxn["sgnr"] = algosdk.decodeAddress(signerAddr);
+              signedTxn["sgnr"] = algosdk.decodeAddress(signerAddr).publicKey;
             }
 
             // Encode the signed transaction using MessagePack
@@ -446,6 +446,92 @@ export function registerGroupTransactionTools(server: McpServer, env: Env, props
     }
   );
 
+  // SDK-based atomic transaction group signing with mnemonic
+  server.tool(
+    'sdk_sign_atomic_group',
+    'Sign an atomic transaction group with an Algorand account mnemonic. Used for user testing with a mnemonic instead of using the embedded Vault based wallet accounts which are default to this MCP. Use only if explicitly asked by user to sign a transaction group using mnemonic!',
+    {
+      encodedTxns: z.array(z.string()).describe('Array of base64-encoded unsigned transactions'),
+      mnemonic: z.string().describe('25-word mnemonic for the signing account')
+    },
+    async ({ encodedTxns, mnemonic }) => {
+      try {
+        // Derive account from mnemonic
+        const account = algosdk.mnemonicToSecretKey(mnemonic);
+        const publicKeyBuffer = algosdk.decodeAddress(account.addr.toString()).publicKey;
+
+        // Decode transactions
+        const decodedTxns = encodedTxns.map(txn => {
+          return algosdk.decodeUnsignedTransaction(
+            Buffer.from(txn, 'base64')
+          );
+        });
+
+        // Assign group ID if not already assigned
+        let groupedTxns: algosdk.Transaction[];
+        if (!decodedTxns[0].group) {
+          groupedTxns = algosdk.assignGroupID(decodedTxns);
+        } else {
+          groupedTxns = decodedTxns;
+        }
+
+        // Sign each transaction with the mnemonic-derived key
+        const signatures = groupedTxns.map((txn: algosdk.Transaction) => {
+          const signatureResult = algosdk.signTransaction(txn, account.sk);
+
+          if (!signatureResult.blob) {
+            throw new Error('Failed to sign transaction');
+          }
+
+          // Extract signature from the signed blob
+          const signature = signatureResult.blob;
+          const txnObj = msgpack.decode(algosdk.encodeUnsignedTransaction(txn));
+
+          // Create signed transaction object
+          const signedTxn: any = {
+            txn: txnObj,
+            sig: signature,
+          };
+
+          // Add AuthAddr if signing with a different key than From indicates
+          const fromPubKey = txn.sender.publicKey;
+          let keysMatch = fromPubKey.length === publicKeyBuffer.length;
+          if (keysMatch) {
+            for (let i = 0; i < fromPubKey.length; i++) {
+              if (fromPubKey[i] !== publicKeyBuffer[i]) {
+                keysMatch = false;
+                break;
+              }
+            }
+          }
+
+          if (!keysMatch) {
+            signedTxn.sgnr = algosdk.decodeAddress(account.addr.toString()).publicKey;
+          }
+
+          // Encode the signed transaction using MessagePack
+          const encodedSignedTxn: Uint8Array = new Uint8Array(
+            msgpack.encode(signedTxn, { sortKeys: true, ignoreUndefined: true })
+          );
+
+          return Buffer.from(encodedSignedTxn).toString('base64');
+        });
+
+        return ResponseProcessor.processResponse({
+          signedTxns: signatures,
+          message: 'Transactions signed using mnemonic-derived account'
+        });
+      } catch (error: any) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Error signing atomic transaction group: ${error.message || 'Unknown error'}`
+          }]
+        };
+      }
+    }
+  );
+
   // Submit atomic transaction group
   server.tool(
     'sdk_submit_atomic_group',
@@ -476,7 +562,7 @@ export function registerGroupTransactionTools(server: McpServer, env: Env, props
 
         // Submit the transaction group
         const response = await algodClient.sendRawTransaction(decodedTxns).do();
-        const txId = response.txId || response.txid;
+        const txId = response.txid;
         console.log('Transaction ID:', txId);
 
         // Wait for confirmation
@@ -486,7 +572,7 @@ export function registerGroupTransactionTools(server: McpServer, env: Env, props
         return ResponseProcessor.processResponse({
           confirmed: true,
           txID: txId,
-          confirmedRound: confirmedTxn['confirmed-round'],
+          confirmedRound: confirmedTxn.confirmedRound,
           txnResult: confirmedTxn
         });
       } catch (error: any) {

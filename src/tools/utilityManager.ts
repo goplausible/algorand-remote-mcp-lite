@@ -3,11 +3,11 @@
  * Provides essential Algorand utility functions
  */
 
-import algosdk from 'algosdk';
+import * as algosdk from 'algosdk';
 import { z } from 'zod';
 import { ResponseProcessor } from '../utils';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { guide } from '../utils/Guide.js';
+import { skill } from '../utils/Skill.js';
 import type { Env, Props } from '../types';
 
 /**
@@ -92,7 +92,7 @@ export function registerUtilityTools(server: McpServer,env: Env, props: Props): 
     },
     async ({ appId }) => {
       try {
-        const address = algosdk.getApplicationAddress(appId);
+        const address = algosdk.getApplicationAddress(appId).toString();
         return ResponseProcessor.processResponse({ address });
       } catch (error: any) {
         return {
@@ -310,19 +310,19 @@ export function registerUtilityTools(server: McpServer,env: Env, props: Props): 
   //   }
   // );
 
-  // Get agent guide for Algorand Remote MCP
+  // Get agent skill for Algorand Remote MCP
   server.tool(
-    'algorand_mcp_lite_guide',
-    'Access comprehensive guide for using Algorand Remote MCP Lite, including step-by-step workflows, examples, and best practices.',
+    'algorand_mcp_skill',
+    'Access comprehensive Algorand MCP skill including step-by-step workflows, examples, and best practices.',
     {},
     async () => {
       try {
-        return ResponseProcessor.processResponse(guide);
+        return ResponseProcessor.processResponse(skill);
       } catch (error: any) {
         return {
           content: [{
             type: 'text',
-            text: `Error getting agents guide: ${error.message || 'Unknown error'}`
+            text: `Error getting agents skill: ${error.message || 'Unknown error'}`
           }]
         };
       }
