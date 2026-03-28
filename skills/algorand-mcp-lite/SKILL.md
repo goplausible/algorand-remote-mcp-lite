@@ -18,12 +18,21 @@ This skill defines capabilities, workflows, and best practices for interacting w
 
 ---
 
-## Response Handling — Structured Data Widgets
+## Response Handling — MCP Apps UI Widgets
 
-Algorand Remote MCP Lite returns rich UI widgets for supported clients.
+Algorand Remote MCP Lite uses the MCP Apps SDK (`@modelcontextprotocol/ext-apps`) to register tools with interactive UI widgets via `registerAppTool()`. Widget resources are registered via `registerAppResource()`.
 
-1. When `structuredData: true` is present in a tool response, do NOT repeat, reformat, or summarize the `content` text — the user already sees the UI card inline. Inform them a UI widget is available and ask if they want raw data too.
-2. Only fall back to parsing/displaying `content` text if `structuredData: true` is absent.
+### How it works
+
+- **55 tools** are registered as App tools with `_meta.ui.resourceUri` linking each tool to an HTML widget resource.
+- Each tool returns both `content` (text fallback) and `structuredContent` (typed data for the widget).
+- The host detects `_meta.ui.resourceUri` on the tool and renders the widget inline — **the widget IS the complete response**.
+- 4 plain utility tools (`sdk_encode_address`, `sdk_decode_address`, `algorand_mcp_skill`, `haystack_needs_optin`) have no UI and return text only.
+
+### Agent behavior rules
+
+1. **When the host supports MCP Apps UI**: The widget renders inline as the complete response. Do NOT repeat, reformat, or summarize the `content` text — the user already sees the widget. Simply confirm the action succeeded.
+2. **For text-only clients**: The host shows the `content` text fallback automatically. No special agent handling is needed.
 3. If the user explicitly asks for raw data, display the `content` text.
 
 ---
@@ -61,7 +70,7 @@ All API tools accept optional `itemsPerPage` (default 10) and `pageToken` parame
 
 ---
 
-## Complete Tool Reference (59 tools)
+## Complete Tool Reference (59 tools — 55 App tools with UI widgets, 4 plain text-only tools)
 
 ### 1. Wallet Management (4 tools)
 
