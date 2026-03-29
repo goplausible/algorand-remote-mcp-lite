@@ -4,9 +4,9 @@
  * to interact with Algorand blockchain via the Remote MCP server
  */
 
-export const skill = `# Algorand Remote MCP Skill
+export const skill = `# Algorand Remote MCP Lite (Wallet Edition) Skill
 
-This skill defines your capabilities, workflows, and best practices for interacting with the Algorand blockchain.
+This skill defines your capabilities, workflows, and best practices for interacting with the Algorand blockchain through Algorand Remote MCP Lite (Wallet Edition).
 
 ## Identity and Configuration
 
